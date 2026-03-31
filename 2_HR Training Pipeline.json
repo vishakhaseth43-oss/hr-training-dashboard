@@ -1,0 +1,594 @@
+{
+  "name": "HR Training Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        64,
+        -48
+      ],
+      "id": "8d9fe406-f53e-495f-831d-87d5d2c2e27b",
+      "name": "Schedule Trigger",
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1ba0E_7fo2nnIyx0Px5xcWcw2N6_1g7MDqtEvNEXMi3c",
+          "mode": "list",
+          "cachedResultName": "HR Training Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ba0E_7fo2nnIyx0Px5xcWcw2N6_1g7MDqtEvNEXMi3c/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Employee_Training",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ba0E_7fo2nnIyx0Px5xcWcw2N6_1g7MDqtEvNEXMi3c/edit#gid=0"
+        },
+        "options": {
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRange"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        256,
+        -48
+      ],
+      "id": "ba619478-5fa0-44c9-89e6-d2007bb4aef6",
+      "name": "Get row(s) in sheet",
+      "executeOnce": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "eKVShu3G54Oo4ZyX",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "65b6fb64-6812-4176-891d-b35b655554fa",
+              "leftValue": "={{ $json[\"Overdue\"] }}",
+              "rightValue": "Yes",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        -48
+      ],
+      "id": "be774ff0-ce97-4ef2-8980-64f344eefdb7",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(function(item) {\n\n  var raw = item.json;\n\n  // Print all keys to help debug\n  var allKeys = Object.keys(raw);\n  \n  // Find completed field - must contain 'Completed'\n  var completed = '';\n  var completedKey = '';\n  for (var i = 0; i < allKeys.length; i++) {\n    if (allKeys[i].toLowerCase().indexOf('completed') !== -1) {\n      completedKey = allKeys[i];\n      completed = String(raw[allKeys[i]] || '').trim();\n      break;\n    }\n  }\n\n  // Find score field - must contain 'Score' but NOT 'Skill'\n  var score = 0;\n  var scoreKey = '';\n  for (var j = 0; j < allKeys.length; j++) {\n    var k = allKeys[j].toLowerCase();\n    if (k.indexOf('score') !== -1 && k.indexOf('skill') === -1) {\n      scoreKey = allKeys[j];\n      score = Number(raw[allKeys[j]]) || 0;\n      break;\n    }\n  }\n\n  var today = new Date();\n  var deadline = new Date(raw['Deadline']);\n  var overdue = today > deadline && completed !== 'Yes';\n\n  var skillGap = 'High';\n  if (completed === 'Yes') {\n    if (score >= 80)      skillGap = 'Low';\n    else if (score >= 50) skillGap = 'Medium';\n    else                  skillGap = 'High';\n  }\n\n  var status = 'In Progress';\n  if (completed === 'Yes')  status = 'Completed';\n  else if (overdue)          status = 'Overdue';\n\n  return {\n    json: {\n      'Employee_ID':     String(raw['Employee ID']  || ''),\n      'Full_Name':       String(raw['Full Name']     || ''),\n      'Department':      String(raw['Department']    || ''),\n      'Course_Name':     String(raw['Course Name']   || ''),\n      'Enrolled_Date':   String(raw['Enrolled Date'] || ''),\n      'Deadline':        String(raw['Deadline']      || ''),\n      'Completed':       completed,\n      'Score':           score,\n      'Email':           String(raw['Email']         || ''),\n      'Skill_Gap_Score': skillGap,\n      'Overdue':         overdue ? 'Yes' : 'No',\n      'Status':          status,\n      'Processed_Date':  today.toISOString().split('T')[0]\n    }\n  };\n\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        -48
+      ],
+      "id": "fd925103-1dc9-48c7-9209-679ceb02e4b0",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1ba0E_7fo2nnIyx0Px5xcWcw2N6_1g7MDqtEvNEXMi3c",
+          "mode": "list",
+          "cachedResultName": "HR Training Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ba0E_7fo2nnIyx0Px5xcWcw2N6_1g7MDqtEvNEXMi3c/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1483827585,
+          "mode": "list",
+          "cachedResultName": "HR_Training_Output",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ba0E_7fo2nnIyx0Px5xcWcw2N6_1g7MDqtEvNEXMi3c/edit#gid=1483827585"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "threadId",
+              "displayName": "threadId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "labelIds",
+              "displayName": "labelIds",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Employee ID",
+              "displayName": "Employee ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Full Name",
+              "displayName": "Full Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Department",
+              "displayName": "Department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Course Name",
+              "displayName": "Course Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Enrolled Date",
+              "displayName": "Enrolled Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Deadline",
+              "displayName": "Deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Completed\n (Yes/No)",
+              "displayName": "Completed\n (Yes/No)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Score\n (0–100)",
+              "displayName": "Score\n (0–100)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Completed",
+              "displayName": "Completed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Skill_Gap_Score",
+              "displayName": "Skill_Gap_Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Overdue",
+              "displayName": "Overdue",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed_Date",
+              "displayName": "Processed_Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        880,
+        -144
+      ],
+      "id": "4165161a-b161-4345-9508-b42f0fb18af9",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "eKVShu3G54Oo4ZyX",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1ba0E_7fo2nnIyx0Px5xcWcw2N6_1g7MDqtEvNEXMi3c",
+          "mode": "list",
+          "cachedResultName": "HR Training Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ba0E_7fo2nnIyx0Px5xcWcw2N6_1g7MDqtEvNEXMi3c/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1483827585,
+          "mode": "list",
+          "cachedResultName": "HR_Training_Output",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1ba0E_7fo2nnIyx0Px5xcWcw2N6_1g7MDqtEvNEXMi3c/edit#gid=1483827585"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "threadId",
+              "displayName": "threadId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "labelIds",
+              "displayName": "labelIds",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Employee ID",
+              "displayName": "Employee ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Full Name",
+              "displayName": "Full Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Department",
+              "displayName": "Department",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Course Name",
+              "displayName": "Course Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Enrolled Date",
+              "displayName": "Enrolled Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Deadline",
+              "displayName": "Deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Completed\n (Yes/No)",
+              "displayName": "Completed\n (Yes/No)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Score\n (0–100)",
+              "displayName": "Score\n (0–100)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email",
+              "displayName": "Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Completed",
+              "displayName": "Completed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Skill_Gap_Score",
+              "displayName": "Skill_Gap_Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Overdue",
+              "displayName": "Overdue",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Processed_Date",
+              "displayName": "Processed_Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        880,
+        48
+      ],
+      "id": "182b2e62-0c38-44db-9c7e-04221f977788",
+      "name": "Append row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "eKVShu3G54Oo4ZyX",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Append row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "de28fe7b-347a-4f8b-853e-f92d99f98a3f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4cfddcf33e76844f5a7aaf04a900d004af5402c7cab33af5f6291679ba07828b"
+  },
+  "id": "YXmbhJpguKrPPnZD",
+  "tags": []
+}
